@@ -1,0 +1,724 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML+RDFa 1.1//EN"
+    "http://www.w3.org/MarkUp/DTD/xhtml-rdfa-2.dtd">
+<html version="XHTML+RDFa 1.1" xmlns:xml="http://www.w3.org/XML/1998/namespace" xmlns="http://www.w3.org/1999/xhtml">
+<!-- <html xmlns="http://www.w3.org/1999/xhtml" version="XHTML+RDFa 1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.w3.org/1999/xhtml http://www.w3.org/MarkUp/SCHEMA/xhtml-rdfa-2.xsd" lang="en" xml:lang="en"> -->
+<head>
+    <title>ADQL examples</title>
+    <style type="text/css">
+    pre {
+     background-color:#EEE;
+     color:#000;
+     font-family:monospace;
+     padding: 0.5em;
+    }
+   </style>
+</head>
+<body vocab="ivo://ivoa.net/std/DALI-examples">
+<h1>An Astronomy Data Query Language cookbook to accompany Gaia Data Release 1</h1>
+
+
+
+<h2>Fundamentals of relational databases and structured query language</h2>
+
+<p>Structured Query Language (SQL) is the <i>lingua franca</i> of relational database management systems (RDBMS). A relational database consists simply of tabular sets of data where relationships exist between the tables: the data are organised in a relational way for ease of maintenance and efficiency of storage. Moreover the relational organisation presents a logical arrangement to the user of the data. Astronomical Data Query Language (ADQL) is a specialised variant of SQL developed for use with the proliferation of astronomical datasets available within the burgeoning Virtual Observatory on the Internet. ADQL standardises queryable resources and extends the functionality of SQL in an astronomical context. Standardisation is needed because although there are existing SQL standards, various open-source and commercial relational database management systems (MySQL, PostgreSQL, Microsoft SQL Server, Oracle DB, ...) do not always implement the SQL standard in exactly the same way syntactically. Extensions are required because certain common astronomical constructs (notably spherical polar coordinate systems and geometries) are not easily expressed in standard SQL.</p>
+
+<h3>SQL basics</h3>
+<p>SQL is not a programming language as such especially when limited, for example, in a read-only context via a web form accessing a static dataset stored in an RDBMS. In such circumstances the end-user is limited to SELECT ... FROM ... WHERE ... queries but these can get quite sophisticated when combining (joining) row sets from different tables, or when creating "virtual" row sets using subquery constructs in place of explicit table names. SQL is set-based in that the statement provided by the end-user defines the set of properties of the records to be returned from the stored data rather than a list of operations to be executed in order to deliver those records - at first sight this can be a little confusing for someone familiar with procedural programming. There are three main types of SELECT statement:</p>
+<ul><li>projections: the result is a subset of the available columns</li>
+<li>selections: the result is a subset of the available rows</li>
+<li>joins: the result is a set of <i>all</i> combinations of available rows from the sets being joined</li>
+</ul>
+<p>Examples of all three are introduced below with reference to the Gaia database tables. A good general introduction to SQL is given by <a href="http://shop.oreilly.com/product/9780596518851.do">SQL in a nutshell (O'Reilly  2008)</a>; there are also good tutorials available <a href="http://www.sqlcourse2.com/other_links.html">online</a>. A more <a href="https://en.wikipedia.org/wiki/Relational_algebra">theoretical and algebraic description of the relational logic that underpins SQL</a> is provided by Wikipedia.</p>
+
+<h3>ADQL implementation</h3>
+<p>ADQL simply defines just one operational statement, not surprisingly it is a SELECT:</p>
+
+<pre>
+SELECT [TOP setLimit] selectList FROM fromClause 
+[WHERE condition(s)] [GROUP BY columnExpression(s) [HAVING groupCondition(s)]] [ORDER BY column(s)]
+</pre>
+<ul>
+
+<li>TOP simply limits the output results set to the specified number of rows;</li>
+<li>selectList consists of one or more comma-separated column names from those available in fromClause;</li>
+<li>fromClause consists of one or more comma-separated table names;</li>
+<li>(optional) WHERE condition(s) specifies a set of logical expressions (these are often known as "predicates");</li>
+<li>(optional) GROUP BY columnExpression(s) specifies if the results set should be aggregated into groups;</li>
+<li>(optional) HAVING groupCondition(s) specifies and additional predicates that should be applied to further select groups;</li>
+<li>(optional) ORDER BY column(s) specifies the order in which the rows should appear in the results set</li>
+</ul>
+<h3>The Gaia Archive as a relational database</h3>
+<p>The Gaia Archive presents an <a href="http://archives.esac.esa.int/gaia/">interactive User Interface for web browsers</a> (hereafter the Gaia archive) and a programmatic Table Access Protocol web service that feature an ADQL interface at their core. Behind this interface is a set of tables in an RDBMS, e.g.</p>
+<ul>
+<li>gaia_source: the main Gaia source table</li>
+<li>tgas_source: the subset of Gaia sources with full five-parameter astrometric solutions, including proper motions and parallaxes, in DR1 (as determined from the <a href="http://arxiv.org/abs/1412.8770">Tycho-Gaia Astrometric Solution</a>)</li>
+<li>tables of "external" catalogue data from other large-scale survey missions (Hipparcos, 2MASS, SDSS, ...)</li>
+<li>precomputed crossmatch tables between the external catalogues and gaia_source</li>
+</ul>
+<p>To browse the tables and their contents, simply click on the "Search" tab in the <a href="https://gaia.esac.esa.int/archive/">Gaia archive</a>, then the ADQL form sub-tab, and explore via the tree-view in the panel on the left hand side.
+Note that the Gaia archive contains several databases to track different Gaia releases and public non-Gaia data (e.g. from
+cross-matched surveys). Gaia DR1 data are held in database "gaiadr1" while the other public datasets are
+contained in database "public". Names of tables containing Gaia data should be prefixed with "gaiadr1" while the others should
+be prefixes with "public".
+</p>
+<p>Here is a simple example ADQL projection limited to the first 10 rows:</p>
+<pre>
+SELECT TOP 10 source_id, parallax FROM gaiadr1.tgas_source
+</pre><p>and here is a simple selection:</p>
+<pre>
+SELECT TOP 10 * FROM gaiadr1.tgas_source WHERE dec &lt; 0 ORDER BY parallax DESC
+</pre><p>while here is a simple join query:</p>
+<pre>
+SELECT COUNT(*) FROM gaiadr1.tgas_source AS t, public.igsl_source_catalog_ids AS i WHERE t.source_id = i.source_id
+</pre><p>N.B. by definition an unpredicated join yields all valid combinations of the two (or more) row sets in the FROM list so it is essential to predicate join queries to associate the related rows. In general, a join of N tables will require at least N-1 predicates in order to do achieve this. If your join query on N tables has less than N-1 predicates on attribute(s) that relate the rows then be prepared for a long wait and a large results set containing useless rows of unrelated combinations. Indeed, a good way of validating a join query is to use COUNT(*) initially to check if the predicates are correct and return a sensible row count before making the attribute selection itself. If join predicates are missing or incorrectly expressed, then the row count is likely to be huge, always assuming that the query doesn't time-out (which is highly likely). In this example rows from the two tables are associated by the unique identifier key that is common to both (source_id).</p>
+<p>Given the above primer in set-based SQL/ADQL, it should now be clear why the row sets returned by this query:</p>
+<pre>
+SELECT TOP 1 'Hello world!' AS greeting, ra, dec FROM gaiadr1.tgas_source
+</pre><p>are as they are with and without the TOP 1 and/or the column projection of ra and dec.</p>
+<p>To get the best out of the archive at DR1:</p>
+<ul>
+
+<li>Query tgas_source rather than gaia_source when interested in parallax/pms since the vast majority of rows in gaia_source have no parallax or proper motion measurements available in this release</li>
+<li>Try to predicate (filter) your selections on indexed quantities wherever possible, for example gaia_source has indexes on (the Gaia archive table browser highlights those columns that are indexed):
+    <ul>
+    <li>ra/dec</li>
+    <li>phot_g_mean_mag</li>
+    <li>source_id</li>
+    <li>random_index</li>
+    </ul>
+</li>
+</ul><p>Note also the following:</p>
+<ul>
+<li>The database contains measured parallaxes rather than calculated (or inferred) distances - there is a very good reason for this that is beyond the scope of this manual but for further information please see <a href="http://arxiv.org/abs/1507.02105">Bailer-Jones (2015)</a>;</li>
+<li>NULL fields: BEWARE! The Gaia archive RDBMS employs NULL for attributes when no value is available (rather than "default" values) - see the next section for more details and for the implications of this approach.</li>
+</ul>
+<h3>The implications of NULL</h3>
+<p>In tabulated Gaia data it is not always the case that every attribute in every row has a value available. For example, in DR1 only the Tycho subset of sources has full five-parameter astrometric solutions yielding proper motion and parallax. In the Gaia archive database this is dealt with using null values, where null is a special type of entry included in a table if the value of a given attribute is not known (or is indeterminate or is not applicable) for a particular row. The query processor in an RDBMS recognises that a value marked as null is unknown or indeterminate and will not include it in, say, the computation of the mean value of all entries in a column, or in selections predicated on, say, a range of values for that column. The inclusion of null values for an attribute means that an expression involving it can evaluate to true, false or unknown. While in many (most?) circumstances this is unlikely to be an issue and indeed would be what the end user would want and expect, for complex queries it should be borne in mind when checking the results especially if the row count is unexpectedly low or high or the results set itself is missing one or more expected records. Consult Wikipedia for a <a href="https://en.wikipedia.org/wiki/Null_(SQL)">detailed discussion on NULL and three-valued logic in an SQL context</a> (the <a href="https://en.wikipedia.org/wiki/Null_(SQL)#Comparisons_with_NULL_and_the_three-valued_logic_.283VL.29">section on comparisons</a> is particularly relevant and useful). Note that NULL can be checked for explicitly in ADQL:</p>
+<pre>
+SELECT COUNT(*) FROM gaiadr1.gaia_source WHERE parallax IS NULL
+</pre>
+<p>and</p>
+<pre>
+SELECT COUNT(*) FROM gaiadr1.gaia_source WHERE pmra IS NOT NULL
+</pre>
+<p>for example, but normally this should not be necessary.</p>
+
+<h3>Fully qualified attribute identifiers</h3>
+<p>ADQL allows a fully-qualified identifier string for databases, tables and fields that follows from the underlying 
+SQL convention whereby full stops are used, i.e. database_name.table_name.attribute_name. For example in the 
+Gaia archive:</p>
+<pre>
+SELECT gaiadr1.tgas_source.ra FROM gaiadr1.tgas_source 
+</pre><p>This is unnecessarily verbose in that there is no need to specify database nor table names in the SELECT clause
+because there is no ambiguity when processing the query (table identifiers must always be fully qualified as above). 
+If however a query 
+joins two tables which contain the same attribute name for example, then it is necessary to qualify the identifier 
+to the level that removes any ambiguity. In general, fully qualifying attribute identifiers may be necessary 
+when joining tables within one database or when joining tables across different databases. An example of the latter is 
+if a user uploads data to the Gaia archive, thereby creating a table in a database identified by their login name. 
+Column names ra, dec and source_id are particularly common amongst the public database tables, so any selections 
+involving those in a join query would need to specify from which table the selection should be made. For examples 
+of this see queries below.</p>
+
+<h2>ADQL reference</h2>
+<p>A <a href="http://www.ivoa.net/documents/REC/ADQL/ADQL-20081030.pdf">full technical specification of ADQL</a> is available online as part of the specification and reference documentation developed under the auspices of the International Virtual Observatory Alliance. Here we present a summary of the most important features and excluding any that are not implemented in the Gaia archive (the ADQL standard itself does not require strict adherence to the entire specification so a given service need not implement everything within it).</p>
+
+<h3>Query syntax</h3>
+<p>The query syntax is as follows (taken from <i>IVOA Astronomical Data Query Language</i>, version 2.0, 30th October 2008):</p>
+
+<pre>
+SELECT [ ALL | DISTINCT ]
+  [ TOP unsigned_integer ]
+  { * | { value_expression [ [AS] column_name ] }, ... } 
+FROM {
+  { table_name [ [AS] identifier ] | 
+  ( SELECT ....) [ [AS] identifier ] |
+  table_name [NATURAL] [ INNER | { LEFT | RIGHT | FULL [OUTER] } ] JOIN table_name
+  [ON search_condition | USING ( column_name,...) ] } 
+  , ...}
+[ WHERE search_condition ]
+[ GROUP BY column_name, ... ]
+[ HAVING search_condition ]
+[ ORDER BY { column_name | unsigned_integer } [ ASC | DESC
+  ],...]
+</pre> 
+<p>The query returns a subset of the table(s) specified where the column ordering is as specified in the SELECT expression, or as in the tables if an asterisk is specified to select all columns. The row ordering is arbitrary unless ORDER BY is specified. As described previously, TOP N will limit the results set to N rows (again an arbitrary set unless ORDER BY is specified).</p> 
+<p>ADQL supports table subqueries and joins, both implicit and explicit. Table subqueries can appear as part of one or more WHERE predicates (e.g. using IN or BETWEEN) and/or in the FROM clause when building derived, transient row sets for convenience (see later for examples of these features).</p>
+<p>ADQL supports explicit joins of types INNER (the default for JOIN ... ON and when joining implicitly via comma-separated entities in the FROM clause) and OUTER (LEFT, RIGHT and FULL). For example, the simple join query</p>
+<pre>
+SELECT COUNT(*) FROM gaiadr1.tgas_source AS t, public.igsl_source_catalog_ids AS i WHERE t.source_id = i.source_id
+</pre><p>can be written explicitly as an inner join:</p>
+<pre>
+SELECT COUNT(*) FROM gaiadr1.tgas_source AS t INNER JOIN public.igsl_source_catalog_ids AS i ON t.source_id = i.source_id
+</pre>
+<p>ADQL search filters can be part of the WHERE, JOIN and HAVING clauses and consist of conditions separated by the standard logical operators AND, OR and NOT. 
+Standard arithmetic comparators (=, !=, &lt;, >, &lt;>, &lt;=, >=) are supported (note == is not used for equality). Additional SQL functions BETWEEN, LIKE, NULL and EXISTS are supported. Standard mathematical operators are supported: +, -, *, / but note that there is no ** exponentiation - use the POWER function instead (see below). String concatenation || and wildcards % (in conjunction with LIKE) are supported.</p> 
+ <p>ADQL trigonometric functions (arguments or results in radians) and associated conversions:</p>
+<ul>
+
+<li>SIN(x), COS(x), TAN(x): standard trigonometric functions (arguments in radians)</li>
+<li>ASIN(x), ACOS(x), ATAN(x): standard inverse trigonometric functions (result in radians; argument of ASIN and ACOS must be in the range -1 &lt;= x &lt;= +1)</li>
+<li>ATAN2(x,y): arc tangent of y/x with the resulting angle in the range -pi to +pi radians</li>
+<li>DEGREES(x): converts the angle argument from radians into degrees</li>
+<li>RADIANS(x): converts the angle argument from degrees into radians</li>
+</ul>
+<p>ADQL exponentiation and logarithmic functions:</p>
+<ul>
+
+<li>EXP(x): Euler's number <i>e</i> raised to the power of x</li>
+<li>LOG(x): natural (base <i>e</i>) logarithm of x (x must be greater than zero)</li>
+<li>LOG10(x): Base 10 logarithm of x (x must be greater than zero)</li>
+<li>POWER(x, y): returns x raised to the power y</li>
+<li>SQRT(x): returns the square root of x (x must be greater than zero)</li>
+</ul>
+<p>Truncation and rounding in ADQL:</p>
+<ul>
+
+<li>ROUND(x,n): rounds floating-point value x to the nearest integer (n=0) or to n decimal places (or n places to the left of the decimal point for negative n)</li>
+<li>FLOOR(x): returns the largest floating point value that is not greater than argument x and is equal to a mathematical integer</li>
+<li>CEILING(x): returns the smallest floating point value that is not less than argument x and is equal to a mathematical integer</li>
+<li>TRUNCATE(x,n): returns the result of truncating the argument x to n decimal places</li>
+</ul>
+<p>Other ADQL functions:</p>
+<ul>
+
+<li>ABS(): returns the absolute value of argument x</li>
+<li>RAND(n): returns a random number in the range 0.0 to 1.0, ignoring (!) the mandatory seed argument n (i.e. consecutive calls with the same n yield different numbers in the Gaia archive)</li>
+<li>MOD(x,y): returns the remainder when x is divided by y (and not vice versa as specified in the IVOA standard)</li>
+<li>PI(): the ubiquitous mathematical constant &pi; (the ratio of the circumference of a circle to its diameter) </li>
+</ul>
+<h3>Geometric functions</h3>
+<p>For the purposes of queries involving geometric constructs in spherical polar coordinate systems that are common in astronomy applications ADQL specifies a number of geometric extension functions to SQL. A complete list of those functions currently defined is given in the <a href="http://www.ivoa.net/documents/REC/ADQL/ADQL-20081030.pdf">full ADQL specification</a>. This section describes those implemented in the Gaia archive.</p>
+<p>The geometrical functions fall into the following broad categories:</p>
+<ul>
+
+<li>data type functions: BOX, CIRCLE, POINT and POLYGON. These all express the given geometry as a new standard type for inclusion in other functions <!-- CENTROID and REGION not implemented nor particularly useful in this context--></li>
+<li>predicate functions: CONTAINS, INTERSECTS. These provide functions for use in WHERE clauses in ADQL queries, taking data type functions for their arguments</li>
+<li>utility functions: AREA, COORD1, COORD2, COORDSYS, DISTANCE. These all accept one or more geometries (expressed via the data type functions) and return a single numeric value, or in the case of COORDSYS, a string value</li>
+</ul>
+<p>The functions are best described by way of simple examples (see also the example queries in the following main section). Note that all angular coordinate arguments are in degrees.</p>
+
+<p><b>Data type functions</b></p>
+
+<p>POINT(<i>coordsys, longitude, latitude</i>) specifies the simplest possible geometry, that of a point on the celestial sphere, in a coordinate system specified by <i>coordsys</i>. This coordinate system string follows the format as defined in <a href="http://www.ivoa.net/documents/REC/DM/STC-20071030.html#_Toc181531798">Space Time Coordinate Metadata for the Virtual Observatory</a> for full flexibility but for standard equatorial coordinates at equinox J2000.0 simply specify 'ICRS'.</p>
+
+<p>BOX(<i>coordsys, longitudeCentre, latitudeCentre, longitudeExtent, latitudeExtent</i>) specifies a rectangular polygon via the string <i>coordsys</i> (see below), the central longitude and latitude, and extent.</p>
+<ul>
+
+<li>this defines a cross at the central position with arms extending, parallel to the coordinate axes at the center position, for half the respective sizes on either side</li>
+<li>the sides of the box are line segments or great circles intersecting the arms of the cross in its end points at right angles with the arms</li>
+</ul>
+<p>For example:</p>
+<pre>
+BOX('ICRS', 0, 0, 10, 1)
+</pre>
+<p>defines a 10 square degree rectangular strip along the celestial equator across the South Galactic Cap. This combines with utility and predicate functions as follows when used in an ADQL query:</p>
+<pre>
+SELECT ra, dec FROM gaiadr1.tgas_source WHERE CONTAINS(POINT('ICRS', ra, dec), BOX('ICRS', 0, 0, 10, 1)) = 1
+</pre>
+<p>which selects all TGAS objects in the rectangular region so defined. Note that the interpretation of BOX is 
+as described in the specification for literal values, but when using column names the BOX sides are great-circles.</p>
+
+<p>CIRCLE(<i>coordsys, longitudeCentre, latitudeCentre, radius</i>) specifies a circular region on the celestial sphere centred at the given coordinates and with the given radius in degrees. In all other respects it functions like BOX.</p>
+
+<p>POLYGON(<i>coordsys, longitude_1, latitude_1, ..., longitude_N, latitude_N</i>) specifies an arbitrary polygon with vertices as given by the coordinate pairs in coordinate system <i>coordsys</i>. For example</p>
+<pre>
+SELECT ra, dec FROM gaiadr1.tgas_source WHERE CONTAINS(POINT('ICRS', ra, dec), POLYGON('ICRS', 0, 0, 10, 0, 0, 10)) = 1
+</pre>
+<p>selects all TGAS sources in the (spherical) triangle bounded by the great circles connecting coordinates [(0, 0), (10, 0), (0, 10)].</p>
+
+<p><b>Predicate functions</b></p>
+
+<p>CONTAINS(<i>geometry_1, geometry_2</i>) is a boolean-valued function used to determine if <i>geometry_1</i> is wholly contained within <i>geometry_2</i>. It is most commonly used to test if a point is contained within (or is on the boundary of) a shape as illustrated above, but can be employed for any two arbitrary geometries. In the ADQL WHERE predicate the function should be compared to 1 (= true, i.e. does contain) or 0 (= false, i.e. does not contain).</p>
+
+<p>INTERSECTS(<i>geometry_1, geometry_2</i>) is a boolean-valued function used to determine if <i>geometry_1</i> intersects with <i>geometry_2</i> and can be employed to test of two geometries overlap. Once again, in the ADQL WHERE predicate the function should be compared to 1 (= true, i.e. does intersect) or 0 (= false, i.e. does not intersect).</p>
+
+<p><b>Utility functions</b></p>
+
+<p>AREA(<i>geometry'</i>) returns the area of the given geometry in square degrees. For example</p>
+<pre>
+SELECT TOP 1 AREA(BOX('ICRS', 0, 0, 1, 1)) AS areaInSqDegs FROM gaiadr1.tgas_source
+</pre>
+<p>demonstrates the use of this function in returning the area of the BOX geometry specified.</p>
+
+<p>DISTANCE(<i>pointGeometry_1,pointGeometry_2</i>) returns the great circle distance between the two points on the celestial sphere specified by the two geometry arguments <i>pointGeometry_1</i> and <i>pointGeometry_2</i>. The great circle arc length is returned in degrees. For example:</p>
+<pre>
+SELECT TOP 1 DISTANCE(POINT('ICRS', 0, 0), POINT('ICRS', 1, 1)) AS dist FROM gaiadr1.tgas_source
+</pre>
+
+<p>COORD1(POINT(...)) extracts the first coordinate of the pair in the POINT geometry argument (COORD2(...) extracts the second). COORDSYS(...) extracts the coordinate system string from the given geometry. These final three utility functions are unlikely to be used generally.</p>
+<p>Note that database table column references are allowed for coordinate pairs in all geometry functions, not just POINT().</p>
+
+<h3>Some common SQL syntax that will not work (or is unimplemented in Gaia archive TAP) ADQL</h3>
+<p>The following currently do not to work in the Gaia archive:</p>
+<ul>
+
+<li>table field wild cards in the select clause along with explicit attribute selecting can result in zero rows returned and an error message, e.g.
+<pre>
+SELECT TOP 10 h.hip, g.*
+FROM public.hipparcos AS h
+JOIN gaiadr1.tgas_source AS g ON g.hip = h.hip
+</pre></li>
+<li>Comments /* ... */ are highlighted in the input ADQL form in a different colour but lead to ADQL parsing errors, e.g.
+<pre>
+SELECT /* comment */ TOP 10 *
+FROM gaiadr1.gaia_source
+</pre></li>
+</ul>
+<h3>Common syntax and other errors and how to avoid them</h3>
+<ul>
+
+<li>ADQL string literals - 
+<ul>
+<li>Use single quotes (e.g. as can be used in Python): SELECT ... FROM ... WHERE stringAttribute = 'summat'</li>
+<li>Double quotes (e.g. as must be used in Java) mean something quite different in an ADQL context</li>
+</ul>
+</li>
+<li>ADQL reserved word used as an identifier - either
+<ul>
+<li>avoid reserved words (those in Section 2.1.2 of <a href="http://www.ivoa.net/documents/REC/ADQL/ADQL-20081030.pdf">the definition</a>) - this is highly advisable - or</li>
+<li>use double quotes to delimit the identifier - highly inadvisable</li>
+</ul></li>
+<li>ADQL is case insensitive -
+<ul>
+<li>do not expect the query parser to be able to distinguish between the same sequence of characters in different capitalisations</li>
+<li>A common convention (e.g. as employed in this Cookbook) is to write reserved words in capitals and everything else in lower or camel case for extra clarity - e.g. SELECT thisAttribute FROM ThisTable WHERE ...</li>
+<li>if you really must enforce case sensitivity in identifiers then again double quotes can be used but again this is inadvisable</li>
+</ul>
+</li>
+<!--<li>Fully qualified identifiers in ADQL
+<li>In common with SQL, ADQL parsers (including that employed in the Gaia archive) will return errors if there is any ambiguity in interpreting the query - for example, 
+</li>-->
+<li>ADQL character set allows simple latin characters and special characters as specified in Section 2.1.1 of <a href="http://www.ivoa.net/documents/REC/ADQL/ADQL-20081030.pdf">the definition</a>
+<ul>
+<li>Beware when cutting/pasting from rich text formatted documents (pdfs, web pages, ...) which may have invisible and/or other disallowed characters embedded and which may cause an ADQL query parse to fail, possibly with an obscure and unhelpful error message or in the worst case no error message at all.
+</li>
+</ul>
+</li>
+<li>ADQL geometric/trigonometric function arguments -
+<ul>
+<li>forward trigonometric functions (SIN(), COS() etc.) take arguments in radians</li>
+<li>geometric functions involving spherical coordinates take arguments in degrees</li>
+<li>use ADQL mathematical functions DEGREES(angleInRadians) and RADIANS(angleInDegrees) to convert when and as necessary</li>
+</ul>
+</li>
+</ul>
+<h2>Ten example ADQL queries</h2>
+<p>This section expresses in ADQL ten of the usage scenarios presented in <a href="http://www.rssd.esa.int/doc_fetch.php?id=3125400">"Gaia data access scenarios summary"</a> (hereafter AB-026) to illustrate some of the features of the language when querying the DR1 database.
+Gaia Data Access Scenario (GDAS) codes are references to the scenario labels used in that document.</p>
+<div resource="#GDAS-BR-07" typeof="example" id="GDAS-BR-07">
+<h3 property="name">I want data of all objects contained in a rectangular/circular region centered on a given sky position (GDAS-BR-07)</h3>
+<p>This is straightforwardly done using the relevant ADQL geometry functions (note angular arguments are in degrees, not the radians default of most SQL trigonometric functions!). For example, to select all sources within 1 degree of central position 3h45m, +24 (J2000), i.e. the centre of the Pleiades star cluster, use the following ADQL:</p>
+
+<pre property="query">
+SELECT ra,dec
+FROM gaiadr1.gaia_source
+WHERE CONTAINS(POINT('ICRS', ra, dec), CIRCLE('ICRS', 56.25, 24.0, 1.0)) = 1
+</pre>
+<p>Notes:</p>
+<ul>
+
+<li>For a rectangular region selection, simply replace CIRCLE(...) with for example BOX('ICRS', 56.25, 24.0, 1.0, 2.0) for a 1 degree x 2 degree rectangle centred at the same position</li>
+<li>Strictly speaking, any reference system (e.g. as specified in these geometric functions via 'ICRS') should also specify a 
+reference position (see for example 
+<a href="http://www.ivoa.net/documents/REC/DM/STC-20071030.html#_Toc181531798">Space Time Coordinate Metadata for the Virtual Observatory</a>). 
+Available options include GEOCENTER (centre of the Earth) and BARYCENTER (barycentre of the solar system) amongst others. 
+These are simply specified via 'ICRS BARYCENTER' etc. however note that such reference systems are currently ignored by
+the archive. No on-the-fly conversion is available and operations are made in the provided coordinates so ensure these correspond to the system
+specified for coordinates stored in the archive.</li>
+<li>This example is relevant also to the following scenario from <a href="http://www.rssd.esa.int/doc_fetch.php?id=3125400">AB-026</a>: GDAS-ST-06</li>
+</ul></div>
+<div resource="#GDAS-BR-06" typeof="example" id="GDAS-BR-06">
+<h3 property="name">I liked the statistical plots presented in Section 3 of Volume 1 of the Hipparcos and Tycho Catalogues. Show me the same for Gaia and allow me to specify the statistic to explore (GDAS-BR-06)</h3>
+<p>Embedded within the <a href="http://www.rssd.esa.int/doc_fetch.php?id=2779219">Gaia sourceID</a> attribute used as a unique identifier for all detected sources is a level-12 <a href="http://arxiv.org/pdf/astro-ph/0409513v1.pdf">Hierarchical Equal Area iso-Latitude Pixelization</a> (HEALPix) index value, and this can be conveniently employed to form statistical aggregates in ADQL using "... GROUP BY..". The HEALPix index uses bits 36 and upwards in sourceID and dividing that attribute by 2^35 extracts the relevant information. The trick is to note that for practical visualisation purposes the number of distinct sky pixels afforded by level-12 HEALPix indexation (around 200 million) is too high but this can be degraded straightforwardly to a practical yet still useful level by dividing by further factors of 4 per level. For example, degrading to level 7 (just under 200000 distinct sky pixels) which is 5 powers of 4, or 10 of 2, we require to divide sourceID by 2^45:</p>
+<pre property="query">
+SELECT source_id/35184372088832 AS hpx7, COUNT(*) AS nsrc
+FROM gaiadr1.gaia_source
+WHERE phot_g_mean_mag BETWEEN 16.5 AND 17.0
+GROUP BY hpx7
+</pre>
+<p>Notes:</p>
+<ul>
+<li>Options other than COUNT(*) for statistical aggregates are 
+<ul>
+<li>MAX() - to get the maximum value (of the attribute specified in the argument) amongst the group, e.g. MAX(...)</li>
+<li>MIN()</li>
+<li>AVG() - to get the average value amongst the group, e.g. AVG(SQRT(pmra*pmra + pmdec*pmdec))</li>
+<li>SUM()</li>
+</ul></li>
+<li>Unfortunately there is no provision for higher order nor robust statistics in ADQL (e.g. the absence of a median aggregate is particularly limiting).</li>
+<li>This example is relevant also to the following scenario from <a href="http://www.rssd.esa.int/doc_fetch.php?id=3125400">AB-026</a>: GDAS-BR-15</li>
+</ul></div>
+<div resource="#GDAS-EG-09" typeof="example" id="GDAS-EG-09">
+<h3 property="name">I want astrometric and/or photometric and or/spectroscopic measurements of a specific type of source ... but possibly for each and every epoch of observation / Information about flux variation and position among objects with multi-epoch photometry (GDAS-EG-09 &amp; GDAS-EG-10)</h3>
+<p>For the current data release (DR1) these two scenarios can be illustrated by example queries on the Ecliptic poles scanning datasets which supplement the main Gaia catalogue releases. They also illustrate the principles of joining two related tables in ADQL. For example, suppose a user is interested in Cepheid variables including statistical parameters pertaining to their variability, along with time-resolved photometry - here is the query:</p>
+
+<pre property="query">
+SELECT p.*, c.*
+FROM gaiadr1.cepheid AS c, gaiadr1.phot_variable_time_series_gfov AS p
+WHERE p.source_id = c.source_id
+ORDER BY p.source_id, p.observation_time
+</pre>
+<p>Notes:</p>
+<ul>
+
+<li>The FROM clause specifies the two tables containing the relevant information (table of Cepheids, and table of photometric data from all photometrically variable sources including Cepheids) while the WHERE clause filters associated records via the unique source identifier</li>
+<li>the results set will consist of a concatenation of time-resolved measurements for each source; the ORDER BY clause ensures that each distinct source's measurements appear sequentially in the results set, in time order within each source set.</li>
+<li>In DR1, the other specific type of variable source that can be queried in this convenient way are RR Lyraes (table rrlyrae)</li>
+</ul>
+</div>
+<div resource="#GDAS-ST-25" typeof="example" id="GDAS-ST-25">
+<h3 property="name">Display the information for a given source for variability analysis... (GDAS-ST-25)</h3>
+<p>In DR1, variability information is available in the Ecliptic Pole Scanning Law (EPSL) data supplements. Suppose (for illustrative purposes) we wish to analyse the light curve of a specific source selected by high amplitude variability: this can be done using a sub-query to pick out the specific source identifier as follows:</p>
+
+<pre property="query">
+SELECT observation_time, g_magnitude
+FROM gaiadr1.phot_variable_time_series_gfov AS p, (
+    SELECT TOP 1 source_id
+    FROM gaiadr1.phot_variable_time_series_gfov_statistical_parameters
+    ORDER BY range DESC
+) AS t
+WHERE p.source_id = t.source_id
+ORDER BY observation_time
+</pre>
+<p>Notes:</p>
+<ul>
+
+<li>This example selects the light curve of the highest amplitude variable recorded</li>
+<li>The results set consists of time-stamped (Barycentric JD) magnitudes in each row, ordered on increasing time</li>
+</ul>
+</div>
+<div resource="#GDAS-ST-08" typeof="example" id="GDAS-ST-08">
+<h3 property="name">I want all quasars observed so far with Gaia to be plotted on the celestial sphere (GDAS-ST-08)</h3>
+<p>A selection of around 170,000 sources made via the (ground-based) identification of QSOs in the Initial Gaia Source List is possible in DR1 using the following join between the IGSL and the main source catalogue:</p>
+
+<pre property="query">
+SELECT g.ra, g.dec
+FROM gaiadr1.gaia_source AS g, public.igsl_source AS i
+WHERE aux_lqrf = 'true' AND g.source_id = i.source_id 
+</pre>
+<p>Notes:</p>
+<ul>
+
+<li>boolean (logical) literals can be specified as above or alternatively '1' , 'y', 'yes', 't' or 'on' for true (or conversely '0', 'n', 'no', 'f', 'off' or 'false')</li>
+<li>The results set can be displayed in topcat in a variety of projections i.e. 3d spherical, Aitoff or Plate Carree</li>
+<li>The Gaia archive also contains a much smaller list of the ICRF2-defining quasars in table aux_qso_icrf2_match which may be useful in this context</li>
+<li>This example is relevant also to the following scenario from <a href="http://www.rssd.esa.int/doc_fetch.php?id=3125400">AB-026</a>: GDAS-EG-06</li>
+</ul>
+<!--
+<h3>I want the list of quasars whose optical magnitude with Gaia is brighter (or the opposite) than a given number etc. (GDAS-EG-06)</h3>
+
+This scenario also specifies filtering by redshift and positional accuracy. Following on from the previous example the following query is predicated on all three attributes at the same time:
+ -->
+</div>
+<div resource="#GDAS-GA-05" typeof="example" id="GDAS-GA-05">
+<h3 property="name">I want any measurements of all stars except Cepheids (GDAS-GA-05)</h3>
+<p>This is trivial if  it is assumed that the table of Cepheids derived from variability information is in some useful sense complete. In DR1 care must be taken since variability content is confined to the EPSL regions, so:</p>
+
+<pre property="query">
+SELECT ra, dec, phot_g_mean_mag
+FROM gaiadr1.gaia_source 
+WHERE (
+  (ra BETWEEN 268.74298 AND 271.25702 AND dec BETWEEN 66.061389 AND 67.061389)
+  OR (ra BETWEEN 88.74298 AND 91.25702 AND dec BETWEEN -67.061389 AND 66.061389)
+  )
+  AND source_id NOT IN (SELECT source_id FROM gaiadr1.cepheid)
+</pre>
+<p>Notes:</p>
+<ul>
+
+<li>The first two predicates limit this query to the North and South Ecliptic Poles at 18:00:00+66:33:41 and 06:00:00-66:33:41 respectively, which is the extent of variability information in DR1</li>
+<li>With over 4 million rows in the results set this query exceeds the limits for download currently set in the Gaia archive for non-registered users</li>
+<li>This example is relevant also to the following scenario from <a href="http://www.rssd.esa.int/doc_fetch.php?id=3125400">AB-026</a>: GDAS-ED-03</li>
+</ul>
+</div>
+<div resource="#GDAS-ST-04" typeof="example" id="GDAS-ST-04">
+<h3 property="name">I want to find stars with exceptional properties, i.e. those stars that are outside a certain statistical range. E.g. extreme proper motion, extreme variability, ... (GDAS-ST-04)</h3>
+<p>This kind of scenario can be approached via two ADQL queries, the first to make an appropriate aggregate statistical summary to inform the second which simply selects the unusual objects as being outlying on the statistical distribution. Some statistical summaries are available in the Gaia archive pages (click on the "Statistics" tab), but histogram counts on arbitrary attributes are particularly useful and easy in ADQL as follows:</p>
+
+<pre property="query">
+SELECT ROUND(SQRT(pmra*pmra + pmdec*pmdec), 0) AS muTot, COUNT(*)
+FROM gaiadr1.tgas_source
+GROUP BY muTot
+ORDER BY muTot DESC
+</pre>
+<p>Here the ROUND function (which returns the nearest double value that is equal to a mathematical integer) is used to 
+quantise the total proper motion in units of milliarcseconds per year. In conjunction with the COUNT(*) aggregate and 
+GROUP BY, a results set is returned that usefully summarises millions, or even billions, of rows in order that the 
+extremes of the distribution can be studies. The results set from the above can be plotted up as a histogram with 
+bars of width 1 mas/yr, but simply specifying descending order presents the highest proper motion objects at the top 
+of the results set: it can be seen that there are a few dozen objects with total proper motion of several arcseconds/yr. 
+These can of course then be studied in more detail via:</p>
+
+<pre>
+SELECT *, SQRT(pmra*pmra + pmdec*pmdec) AS muTot
+FROM gaiadr1.tgas_source
+WHERE SQRT(pmra*pmra + pmdec*pmdec) > 3000
+</pre>
+<p>which will list the full records of sources having proper motions greater than 3 arcsec/yr.</p>
+<p>Notes:</p>
+<ul>
+
+<li>An alias defined in the SELECT clause (e.g. muTot in this example) can be used in the aggregate clauses but not in the WHERE clause.</li>
+<li>groups with zero counts do not appear in the results set of course: care should be taken when handling the data as it might be easy to overlook this and assume a uniform distribution of bins.</li>
+<li>For aggregate functions other than COUNT, see <a href="#GDAS-BR-06"> the second example</a> above.</li>
+<li>You can further filter results sets on properties of the groups using a HAVING clause, e.g. "... GROUP BY muTot HAVING COUNT(*) > 10 ..." would remove bins with counts of &lt;= 10.</li>
+<li>This example is relevant also to the following scenario from <a href="http://www.rssd.esa.int/doc_fetch.php?id=3125400">AB-026</a>: GDAS-OA-15</li>
+</ul>
+</div>
+<div resource="#GDAS-ST-05" typeof="example" id="GDAS-ST-05">
+<h3 property="name">Linear combinations of quantities should be queryable (GDAS-ST-05)</h3>
+<p>This is straightforward in ADQL: a filter predicate in the WHERE clause is not limited to simple mathematical equalities involving literal constants. For example, to select how many TGAS sources have a total proper motion measured with greater than 5&#963; significance (cf. <a href="http://arxiv.org/pdf/0711.3593v1.pdf">Hambly et al. (2008)</a> Section 4.2.2):</p>
+
+<pre property="query">
+SELECT COUNT(*)
+FROM gaiadr1.tgas_source
+WHERE pmra*pmra + pmdec*pmdec > 
+           5*SQRT(pmra*pmra*pmra_error*pmra_error + pmdec*pmdec*pmdec_error*pmdec_error)
+</pre>
+<p>Notes:</p>
+<ul>
+
+<li>For simplicity the above query assumes propagation of errors with no account taken of covariance between the combined astrometric parameters - this is inadvisable (for further information see Section 5.1 of <a href="http://www.aanda.org/articles/aa/pdf/forth/aa28714-16.pdf">the DR1 astrometry paper</a>)</li>
+<li>WHERE expressions can be linear combinations of any appropriate table attributes, or in fact arbitrarily complex mathematical expressions involving all the usual mathematical operators and common functions.</li>
+<li>Be aware that sometimes the expression may not evaluate, e.g. if a quantity is unavailable and null.</li>
+</ul>
+</div>
+<div resource="#GDAS-EG-05" typeof="example" id="GDAS-EG-05">
+<h3 property="name">Provide a list of point-like sources which have absolute proper motions and parallaxes consistent with zero (GDAS-EG-05)</h3>
+<p>This is similar to the previous example but with an additional filter predicate in the WHERE clause. This time with 1&#963; significance criteria on both total proper motion (assumed "absolute" in some sense) and absolute parallax (Gaia parallaxes are certainly absolute by design):</p>
+
+<pre property="query">
+SELECT TOP 10 *
+FROM gaiadr1.tgas_source
+WHERE pmra*pmra + pmdec*pmdec &lt;
+            SQRT(pmra*pmra*pmra_error*pmra_error + pmdec*pmdec*pmdec_error*pmdec_error)
+    AND parallax &lt; parallax_error AND (astrometric_excess_noise &lt; 2 OR astrometric_excess_noise_sig &lt;= 2)
+</pre>
+<p>Notes:</p>
+<ul>
+
+<li>Here we limit the results set to the first ten rows for illustration only</li>
+<li>Astrometric error filters should be used in conjunction with the "excess noise" attributes to allow for the presence of systematic errors (see, for example <a href="http://arxiv.org/abs/1112.4139">the  Gaia Astrometric Global Iterative Solution</a> paper or the online documentation).</li>
+<li>Once again no account is taken here of error correlation</li>
+</ul>
+<!-- === I would like to be able to do on-the-fly smoothing/ averaging of the data such that queries can be composed giving properties per spatial bin - for instance - binned in 1 arc min elements (GDAS-BR-15) === -->
+</div>
+<div resource="#GDAS-OA-17" typeof="example" id="GDAS-OA-17">
+<h3 property="name">Examine the properties of Gaia data in detail without querying the whole Gaia database (GDAS-OA-17)</h3>
+<p>There are a number of ADQL tools and techniques that are relevant here, but note that the main Gaia source catalogue has an attribute <i>random_index</i> that allows selection of subsamples. Hence it is possible extract detailed properties of a random subsample without downloading the entire source list as follows:</p>
+<pre property="query">
+SELECT *
+FROM gaiadr1.gaia_source
+WHERE MOD(random_index, 1000000) = 0
+</pre>
+<p>which randomly selects one out of every million objects.</p> 
+<p>Notes:</p>
+<ul>
+
+<li>the ADQL MOD(x,y) function returns the remainder after division of x by y</li>
+<li>queries of this type are deterministic in that if you execute the query twice you will get the same results set (although not necessarily in the same row order - remember SQL does not guarantee the same ordering unless you explicitly specify ORDER BY ...) because random_index was precomputed (i.e. populated once) when the database was set up</li>
+<li>see also <a href="#GDAS-BR-06">GDAS-BR-06</a> and <a href="#GDAS-GA-04">GDAS-ST-04</a> above</li>
+<li>This example is relevant also to the following scenario from <a href="http://www.rssd.esa.int/doc_fetch.php?id=3125400">AB-026</a>: GDAS-ST-10</li>
+</ul>
+</div>
+<h3>Crossmatch queries using precomputed neighbour tables</h3>
+<p>The Gaia archive includes a set of precomputed crossmatch tables that provide cross-identification of Gaia 
+sources with those from other large-scale surveys. The approach taken in creating these "neighbour" tables 
+reflects the inevitable complications in making a reliable identification of the counterpart of each Gaia 
+source in the generally ground-based, lower angular resolution surveys observed at a different epoch. Extensive 
+online documentation is available within the Gaia archive but briefly a neighbourhood is defined around each Gaia source and all potential matches from 
+the external catalogue are listed in the neighbourhood table. In addition one of the sources in the neighbourhood 
+is identified as the most likely match in each case, where "most likely" considers not only positional proximity 
+but other aspects, and an additional separate table of best neighbour matches is also created. In general the 
+neighbourhood table has an optional many-to-one relationship with the Gaia source table in that in general there 
+may be none, one or many potential matches in the external catalogue for a given Gaia source. The neighbour table 
+has an optional one-to-one relationship. Many usage scenarios will utilise the best neighbour list, but others may 
+examine the content of the neighbourhood to make their own specialised decision on which counterpart to use. 
+Attributes provided to aid in this decision include the angular distance (proximity), incorporating proper motion 
+correct where that is possible, and also the number of external matches for the given Gaia source along with the 
+number of "mates" that each external source has in the Gaia catalogue. This allows, for example, assessment of the 
+reliability of a given cross-identification at query time.</p>
+<p>Survey datasets held locally within the Gaia archive for crossmatch are generally large (millions of rows or larger) or catalogues having special relevance to astrometry.  The following catalogues have precomputed neighbour tables in DR1:</p>
+<ul>
+
+<li> <a href="http://www.ipac.caltech.edu/2mass/releases/allsky/doc/explsup.html">2MASS</a> point source catalogue (<a href="http://adsabs.harvard.edu/abs/2006AJ....131.1163S">Skrutskie et al. 2006</a>)
+</li>
+<li> <a href="http://irsadist.ipac.caltech.edu/wise-allwise/">WISE</a> (<a href="http://wise2.ipac.caltech.edu/docs/release/allwise/expsup/">Cutri et al. 2013</a>)
+</li>
+<li> Guide Star Catalogue (version 2.3; <a href="http://adsabs.harvard.edu/abs/2008AJ....136..735L">Lasker et al. 2008</a>)
+</li>
+<li> Hipparcos in the <a href="http://adsabs.harvard.edu/abs/2007ASSL..350.....V">new reduction by van Leeuwen (2007)</a>
+</li>
+<li> PPMXL (<a href="http://adsabs.harvard.edu/abs/2010AJ....139.2440R">Roeser et al. 2010</a>)
+</li>
+<li> <a href="https://www.rave-survey.org">RAVE</a> (Data Release 4; <a href="http://adsabs.harvard.edu/abs/2013AJ....146..134K">Kordopatis et al. 2013</a>) - N.B. this catalogue and crossmatch will not be available immediately at the DR1 release data but will be added as soon as possible thereafter
+</li>
+<li> <a href="http://data.sdss3.org/sas/dr9/boss/photoObj/">SDSS</a> (Data Release 9; <a href="http://adsabs.harvard.edu/abs/2012ApJS..203...21A">Ahn et al. 2012</a>)
+</li>
+<li> Tycho2 (<a href="http://adsabs.harvard.edu/abs/2000A%26A...355L..27H">Hog et al. 2000</a>)
+</li>
+<li> UCAC4 (<a href="http://adsabs.harvard.edu/abs/2013AJ....145...44Z">Zacharias et al. 2013</a>)
+</li>
+<li> URAT1 (<a href="http://adsabs.harvard.edu/abs/2015AJ....150..101Z">Zacharias et al. 2015</a>)
+</li>
+</ul>
+<p>Note that the set of source attributes included for a given external catalogue is generally only a subset of those available in the original catalogue. For further generalised crossmatch querying, see Distributed Query Processing below.</p>
+<p>The table design of the neighbour tables follows a template in which</p>
+<ul>
+<li>the Gaia source identifier to be used when joining the neighbour table to the Gaia source catalogue table is <b>source_id</b>;</li>
+<li>the external catalogue source identifier to be used when joining the neighbour and external catalogue tables within the archive has the suffix <b>...Oid</b> (e.g. <b>tmassOid</b>);</li>
+<li>the external catalogue source identifier for use when looking up a counterpart in the catalogue published by the originators is <b>original_ext_source_id</b></li>
+<li>external catalogue tables are in database "public" while neighbour tables are in database "gaiadr1"
+</ul><p>and the angular distance and error, number of matches and mates, and a few other attributes are available to allow query filters on the reliability of the association.</p>
+<p>Note that because the Hipparcos and Tycho2 catalogues have been used for DR1 (e.g. as prior information in AGIS for TGAS) the one-to-one matches employed within the Astrometric Global Iterative Solution are also available as extra fields in the TGAS source tables. Hence a neighbour match between Gaia TGAS sources and Tycho2 can also be achieved as follows:</p>
+<pre>
+SELECT TOP 100 *
+FROM public.tycho2, gaiadr1.tgas_source 
+WHERE tgas_source.tycho2_id = tycho2.id OR tgas_source.hip = tycho2.hip
+</pre>
+<p>and in this case the counterparts will be those used in applying astrometric constraints (if any) in AGIS.
+Note that the Hipparcos and Tycho2 join criteria have to be combined with the OR condition because one or the other, but
+not both, are specified for each row in tgas_source.</p>
+<p>There now follows several example queries to illustrate the use of the precomputed neighbour and neighbourhood tables.</p>
+
+<div resource="#GDAS-GA-04" typeof="example" id="GDAS-GA-04">
+<h4 property="name">I want whatever measurements of MW G2 stars only in a given sky region (GDAS-GA-04)</h4>
+<p>One way of making such a selection in absence of any optical colours or detailed spectroscopic information in DR1 is to use 2MASS photometry and this provides a simple example of the use of the best neighbour table. This then requires a crossmatch query employing the precomputed 2MASS crossmatch to enable filtering by near-infrared colours (which are much less susceptible to reddening compared to optical colours anyway). Here is an example employing colour cuts taken from Table 4 of <a href="http://acta.astrouw.edu.pl/Vol64/n3/pdf/pap_64_3_5.pdf">Wegner (2014)</a>:</p>
+
+<pre property="query">
+SELECT g.ra, g.dec, t.j_m, t.j_m - t.ks_m AS jminusk
+FROM gaiadr1.gaia_source AS g, gaiadr1.tmass_best_neighbour AS x, gaiadr1.tmass_original_valid AS t
+WHERE g.source_id = x.source_id AND t.tmass_oid = x.tmass_oid
+  AND g.ra BETWEEN 175 AND 185 AND g.dec BETWEEN -0.5 AND +0.5 
+  AND t.j_m - t.ks_m BETWEEN 0.41 AND 0.43 
+  AND (t.j_msigcom *t.j_msigcom) + (t.ks_msigcom *t.ks_msigcom) &lt; 0.2
+</pre>
+<p>Notes:</p>
+<ul>
+
+<li>ADQL geometry functions are provided for convenience but an alternative is to coarsely filter on (indexed) spherical coordinates, in this case "WHERE ... ra BETWEEN 175 AND 185 AND dec BETWEEN -0.5 AND +0.5 ..." and for some geometries this may be faster</li>
+<li>This example is relevant also to the following scenario from <a href="http://www.rssd.esa.int/doc_fetch.php?id=3125400">AB-026</a>: GDAS-GA-20</li>
+</ul>
+<!-- CONTAINS(POINT('ICRS', g.ra, g.dec), BOX('ICRS', 180.0, 0.0, 10.0, 1.0)) = 1 simply counting this in gaia_source takes 14min! -->
+<p>An example query to select the <i>nearest</i> neighbour is slightly more complicated:</p>
+<pre>
+SELECT g.ra, g.dec, t.j_m, t.j_m - t.ks_m AS jminusk
+FROM gaiadr1.gaia_source AS g, gaiadr1.tmass_neighbourhood AS x, gaiadr1.tmass_original_valid AS t, (
+    SELECT source_id, MIN(angular_distance) AS mindist
+    FROM   gaiadr1.tmass_neighbourhood
+    GROUP BY source_id
+) AS m
+WHERE g.source_id = x.source_id AND t.tmass_oid = x.tmass_oid
+  AND g.ra BETWEEN 175 AND 185 AND g.dec BETWEEN -0.5 AND +0.5 
+  AND t.j_m - t.ks_m BETWEEN 0.41 AND 0.43 
+  AND (t.j_msigcom *t.j_msigcom) + (t.ks_msigcom *t.ks_msigcom) &lt; 0.2
+  AND g.source_id = m.source_id AND x.angular_distance = m.mindist
+</pre><p>This is not necessarily the same as the 'best' neighbour because the algorithm that chooses the best match may take into account prior conditions other than (proper motion corrected) proximity when choosing the counterpart, but nonetheless may be useful in some situations. At the very least it shows how to filter the neighbourhood records using a subquery.</p>
+<p>Note that cast as a single ADQL query this will time out in the Gaia archive. This can be worked around easily by creating a table
+from the small set resulting from the main filter predicates, create a user table from the results set (by clicking the
+appropriate gadget icon in the Gaia archive results pane), and then making
+a join of this very small set on the neighbourhood table.</p>
+
+</div>
+<div resource="#GDAS-GA-01" typeof="example" id="GDAS-GA-01">
+<h4 property="name">I have a list of N members and member candidates in a young open cluster further than 300 pc... I want to obtain the parallaxes, proper motions, broad-band photometry and accurate coordinates of all of them in the Gaia dataset (GDAS-GA-01)</h4>
+<p>This scenario illustrates several features of the Gaia Archive Core Systems user interface in a 3-stage workflow that includes a final ADQL query. There are several ways to approach this but the easiest is to make use of the user table upload feature of the Gaia archive, the use of which requires the user to be registered and to log in their session as opposed to querying anonymously. Then, step 1 is to upload the list of cluster candidates using the "Upload user table" gadget actioned via the button on the top-left of the search tab (disk icon with upward pointing arrow). Available upload formats are VOTable, or space- or comma-separated text (ASCII or CSV). Step 2 is to crossmatch this with the relevant Gaia data table - in DR1, full astrometry is provided for Tycho-Gaia Astrometric Solution (TGAS) sources only, so action a crossmatch using the "Cross-match tables" gadget (third button along on the search tab, double star icon) between the user table and tags_source. At both stages 1 and 2 a results table will appear in the table browser under "User tables". Finally, a selection can then be made in ADQL between the two matched tables in conjunction with the crossmatch table:</p>
+
+<pre property="query">
+SELECT x.dist*3600.0 AS distArcsec, *
+FROM user_xyz.table1 AS t1, gaiadr1.tgas_source AS t2, user_xyz.xmatch_tgas_source_table1 AS x
+WHERE t1.table1_oid = x.table1_table1_oid AND t2.source_id = x.tgas_source_source_id
+ORDER BY t1.table1_oid, x.dist
+</pre>
+<p>Notes:</p>
+<ul>
+
+<li>The "ORDER BY" clause ensures that multiple matches for the same source appear on consecutive lines in the results set, ordered on increasing distance</li>
+<li>Obviously "xyz" should be substituted by the registered user name of the login session</li>
+<li>This example is relevant also to the following scenarios from <a href="http://www.rssd.esa.int/doc_fetch.php?id=3125400">AB-026</a>: GDAS-GA-16, GDAS-GA-21, GDAS-BR-03, GDAS-ST-23</li>
+</ul>
+<!--
+Cut-and-paste query for testing GACS UI:
+
+SELECT x.dist*3600.0 AS distArcsec, *
+FROM user_nhambly.table1 AS t1, gaiadr1.tgas_source AS t2, user_nhambly.xmatch_tgas_source_table1 AS x
+WHERE t1.table1_oid = x.table1_table1_oid AND t2.source_id = x.tgas_source_source_id
+ORDER BY t1.table1_oid, x.dist
+-->
+</div>
+<div resource="#GDAS-GA-22" typeof="example" id="GDAS-GA-22">
+<h4 property="name">I would like to have Gaia distances and proper motions for stars that were observed by RAVE ... the radial velocities and physical parameters derived from RAVE (GDAS-GA-22)</h4>
+<p>This requires a standard join query using the precomputed neighbour table for the RAVE survey:</p>
+<pre property="query">
+SELECT TOP 10 *
+FROM gaiadr1.gaia_source AS s, gaiadr1.rave4_best_neighbour AS x, gaiadr1.rave4_original_valid AS r
+WHERE s.source_id = x.source_id AND x.rave4_oid = r.rave4_oid
+</pre>
+<p>N.B. the RAVE catalogue and crossmatch will not be available immediately at the DR1 release data but will be 
+added as soon as possible thereafter</p>
+
+</div>
+<div resource="#GDAS-FP-01" typeof="example" id="GDAS-FP-01">
+<h4 property="name">Multiply imaged quasars ... (GDAS-FP-01)</h4>
+<!-- double prime &#8243; --><p><i>Multiply imaged quasars consist of multiple (typically 2, 3, 4 or even more) point-like images of a same quasar lensed by a foreground intervening galaxy. The typical angular separations between the multiple point-like images range between 0.1&#8243; and 3&#8243;-5&#8243;</i>. In the absence of detailed spectrophotometric information from Gaia itself in DR1, one way of beginning to tackle such a scenario is to use the precomputed crossmatch "neighbourhood" tables to examine the environments of previously known quasars. The on-ground identification of quasars is expressed in the Initial Gaia Source list to which the main source table is cross referenced. Furthermore we can employ the precomputed crossmatch with SDSS DR9 as a set of cross-identifications of Gaia sources that a common neighbour. Here is some example ADQL that performs the search:</p>
+
+<pre property="query">
+SELECT TOP 100 *
+FROM gaiadr1.gaia_source AS g, gaiadr1.sdss_dr9_neighbourhood as x,
+(
+ SELECT source_id
+ FROM   public.igsl_source_catalog_ids
+ WHERE  id_lqrf > 0
+) AS q,
+(
+ SELECT sdssdr9_oid
+ FROM   gaiadr1.sdss_dr9_neighbourhood
+ WHERE  angular_distance &lt;= 5
+ GROUP BY sdssdr9_oid
+ HAVING COUNT(*) > 1
+) AS s
+WHERE g.source_id = q.source_id
+  AND g.source_id = x.source_id
+  AND s.sdssdr9_oid = x.sdssdr9_oid
+ORDER BY s.sdssdr9_oid, x.angular_distance
+</pre>
+<p>Notes:</p>
+<ul>
+
+<li>The first subquery (with results table labelled "AS q") identifies the set of Gaia source IDs corresponding to known quasars</li>
+<li>The second subquery (with results table labelled "AS s") creates a set of SDSS sources that have more than one Gaia source within neighbourhood radius of 5 arcseconds</li>
+<li>The outer query joins these together with the main Gaia source table and SDSS neighbourhood table in order to associate multiple Gaia sources with the previously identified quasar, the assumption being that one of those Gaia sources is the known quasar while the other are possible lensed counterparts.</li>
+<li>Once again, and depending Gaia archive server load levels at execution time, this may time out and as before the work around is to split into two or more stages, saving intermediate results to a user table</li>
+</ul>
+</div>
+
+<!--
+<h2>Using Distributed Query Processing</h2>
+<ul>
+
+<li>Techniques (e.g. DQP, ...)</li>
+<li>Resources that are likely to be of interest</li>
+<li>Relevant scenarios from <a href="http://www.rssd.esa.int/doc_fetch.php?id=3125400">AB-026</a>: GDAS-OA-08, GDAS-BR-11</li>
+<li>Specific example: Gaia-ESO crossmatch to fulfil a usage example requiring RVs</li>
+<Li>On-the-fly using pgSphere / Q3C (?)</li>
+<li>User upload</li>
+<li>Scenarios from AB-026: GDAS-ST-23, </li>
+</ul>
+-->
+
+<h2>Further information</h2>
+<p>For convenience here is a set of links to follow for further useful information:</p>
+<ul>
+<li><a href="http://www.rssd.esa.int/doc_fetch.php?id=3125400">Gaia data access scenarios summary</a> (DPAC document code GAIA-C9-TN-LEI-AB-026)</li>
+<li><a href="http://archives.esac.esa.int/gaia/">Gaia Archive Core Systems User Interface</a> (Gaia archive)</li>
+<li><a href="http://docs.g-vo.org/adql-gaia/html/index.html">Gaia queries with ADQL and TAP</a> (a short course presented as part of a GAVO workshop preparing for the Gaia DR1)</li>
+<li><a href="http://tapvizier.u-strasbg.fr/adql/help.html">CDS Vizier ADQL cheat-sheet</a></li>
+<li><a href="http://ges.roe.ac.uk/sqlcookbook_idr1.html">Gaia-ESO Science Archive cookbook</a> (N.B. this describes a raw SQL interface as opposed to ADQL)</li>
+<li><a href="http://www.ivoa.net/documents/REC/ADQL/ADQL-20081030.pdf">IVOA ADQL Specification</a></li>
+<li><a href="http://www.star.bris.ac.uk/~mbt/topcat/">Tool for OPerations on Catalogues And Tables</a> (topcat)</li>
+</ul>
+
+</body>
+</html>
