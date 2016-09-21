@@ -292,7 +292,10 @@ FROM gaiadr1.gaia_source
 </li>-->
 <li>ADQL character set allows simple latin characters and special characters as specified in Section 2.1.1 of <a href="http://www.ivoa.net/documents/REC/ADQL/ADQL-20081030.pdf">the definition</a>
 <ul>
-<li>Beware when cutting/pasting from rich text formatted documents (pdfs, web pages, ...) which may have invisible and/or other disallowed characters embedded and which may cause an ADQL query parse to fail, possibly with an obscure and unhelpful error message or in the worst case no error message at all.
+<li>Beware when cutting/pasting from rich text formatted documents (pdfs, web pages, ...) which may have invisible and/or other disallowed characters 
+embedded and which may cause an ADQL query parse to fail, possibly with an obscure and unhelpful error message or in the worst 
+case no error message at all. Cut-and-paste from the examples presented in this cookbook are fine, but (for example) straight cut-and-paste
+of the Figure 5 example query from the <a href="http://dx.doi.org/10.1051/0004-6361/201629512">DR1 summary paper</a> will produce errors as a result of single quotes around string literals
 </li>
 </ul>
 </li>
@@ -480,7 +483,9 @@ WHERE pmra*pmra + pmdec*pmdec >
 <p>Notes:</p>
 <ul>
 
-<li>For simplicity the above query assumes propagation of errors with no account taken of covariance between the combined astrometric parameters - this is inadvisable (for further information see Section 5.1 of <a href="http://www.aanda.org/articles/aa/pdf/forth/aa28714-16.pdf">the DR1 astrometry paper</a>)</li>
+<li>For simplicity the above query assumes propagation of errors with no account taken of covariance between the 
+combined astrometric parameters - this is inadvisable (for further information see 
+Section 5.1 of <a href="http://dx.doi.org/10.1051/0004-6361/201628714">the DR1 astrometry paper</a>)</li>
 <li>WHERE expressions can be linear combinations of any appropriate table attributes, or in fact arbitrarily complex mathematical expressions involving all the usual mathematical operators and common functions.</li>
 <li>Be aware that sometimes the expression may not evaluate, e.g. if a quantity is unavailable and null.</li>
 </ul>
@@ -570,16 +575,19 @@ reliability of a given cross-identification at query time.</p>
 <li>the Gaia source identifier to be used when joining the neighbour table to the Gaia source catalogue table is <b>source_id</b>;</li>
 <li>the external catalogue source identifier to be used when joining the neighbour and external catalogue tables within the archive has the suffix <b>...Oid</b> (e.g. <b>tmassOid</b>);</li>
 <li>the external catalogue source identifier for use when looking up a counterpart in the catalogue published by the originators is <b>original_ext_source_id</b></li>
-<li>external catalogue tables are in database "public" while neighbour tables are in database "gaiadr1"
+<li>external catalogue tables formatted for the purposes of DR1 and neighbour tables are in database "gaiadr1"
 </ul><p>and the angular distance and error, number of matches and mates, and a few other attributes are available to allow query filters on the reliability of the association.</p>
-<p>Note that because the Hipparcos and Tycho2 catalogues have been used for DR1 (e.g. as prior information in AGIS for TGAS) the one-to-one matches employed within the Astrometric Global Iterative Solution are also available as extra fields in the TGAS source tables. Hence a neighbour match between Gaia TGAS sources and Tycho2 can also be achieved as follows:</p>
+<p>Note that because the Hipparcos and Tycho2 catalogues have been used for DR1 (e.g. as prior information in 
+AGIS for TGAS) the one-to-one matches employed within the Astrometric Global Iterative Solution are also 
+available as extra fields in the TGAS source tables. Hence a neighbour match between Gaia TGAS sources and 
+Tycho2 can also be achieved as follows:</p>
 <pre>
 SELECT TOP 100 *
 FROM public.tycho2, gaiadr1.tgas_source 
 WHERE tgas_source.tycho2_id = tycho2.id OR tgas_source.hip = tycho2.hip
 </pre>
 <p>and in this case the counterparts will be those used in applying astrometric constraints (if any) in AGIS.
-Note that the Hipparcos and Tycho2 join criteria have to be combined with the OR condition because one or the other, but
+Note that the Hipparcos and Tycho2 catalogues are contained within schema "public" and that join criteria have to be combined with the OR condition because one or the other, but
 not both, are specified for each row in tgas_source.</p>
 <p>There now follows several example queries to illustrate the use of the precomputed neighbour and neighbourhood tables.</p>
 
